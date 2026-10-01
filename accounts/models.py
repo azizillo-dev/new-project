@@ -3,6 +3,8 @@ from baseapp.models import BaseModel
 from django.contrib.auth.models import AbstractUser
 from django.utils import timezone
 from datetime import timedelta
+from rest_framework.exceptions import ValidationError
+
 
 
 NEW, CODE_VERIFY, DONE, PHOTO_DONE = ('new', 'code_verify', 'done', 'photo_done')
@@ -41,6 +43,12 @@ class CustomUSer(BaseModel, AbstractUser):
     auth_type = models.CharField(max_length=10, choices=AUTH_TYPE)
     phone_number = models.CharField(max_length=13, unique=True, null=True, blank=True)
     photo = models.ImageField(upload_to='accounts/', blank=True, null=True)
+
+
+    def check_email(self):
+        if CustomUSer.objects.filter(username=self.username).exists():
+            raise ValidationError("Bu username band")
+        return
 
 
 class Verify(BaseModel):
