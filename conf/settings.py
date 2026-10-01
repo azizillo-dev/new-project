@@ -1,4 +1,7 @@
+import os
+from dotenv import load_dotenv
 
+load_dotenv()
 
 from pathlib import Path
 
@@ -14,6 +17,18 @@ SECRET_KEY = 'django-insecure-g@+5%a125pc$^j*s)hc&$7#0lv+1m2ujo^rq-yc+uc7eb6^6kf
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
+
+
+
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
+EMAIL_HOST = "smtp.gmail.com"
+EMAIL_PORT = 587
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+
 
 ALLOWED_HOSTS = []
 

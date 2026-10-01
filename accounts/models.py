@@ -1,10 +1,13 @@
+import os
+
 from django.db import models
 from baseapp.models import BaseModel
 from django.contrib.auth.models import AbstractUser
 from django.utils import timezone
 from datetime import timedelta
 from rest_framework.exceptions import ValidationError
-
+import uuid, random
+from rest_framework_simplejwt.tokens import RefreshToken
 
 
 NEW, CODE_VERIFY, DONE, PHOTO_DONE = ('new', 'code_verify', 'done', 'photo_done')
@@ -13,9 +16,6 @@ CUSTOMER, SELLER = ('customer', 'seller')
 AUTH_TYPE = ('via_email', 'via_phone')
 
 
-
-EMAIL_EXPARATION_TIME = 5
-PHONE_EXPARATION_TIME = 3
 
 
 class CustomUSer(BaseModel, AbstractUser):
@@ -46,9 +46,51 @@ class CustomUSer(BaseModel, AbstractUser):
 
 
     def check_email(self):
-        if CustomUSer.objects.filter(username=self.username).exists():
-            raise ValidationError("Bu username band")
+        if CustomUSer.objects.filter(username=self.email).exists():
+            raise ValidationError("Bu email band")
         return
+
+
+    def check_username(self):
+        if not self.username:
+            ud = str(uuid.uuid4)
+            temp_username = "username" + ud[int(ud.rfind("-")) + 1: ]
+            while CustomUSer.objects.filter(username=temp_username).exists():
+                temp_username = temp_username + str(random.randint(0, 10))
+            self.username = temp_username
+
+    def check__password(self):
+        if not self.password:
+            ud = str(uuid.uuid4)
+            temp_password = "password" + ud[int(ud.rfind("-")) + 1: ]
+            self.password = temp_password
+
+    def check_hashing_pass(self):
+        self.password = self.set_password(self.password)
+
+
+    def check_email_normalize(self):
+        if self.email:
+            temp = self.email.lower()
+            self.email = temp
+
+    @property
+    def token(self):
+        refresh_token = RefreshToken.for_user(self)
+        return {
+            "refresh_token" : str(refresh_token),
+            "access_token" : str(refresh_token.access_token)
+        }
+
+
+    def save(self, *args, **kwargs):
+        self.check_email_normalize()
+        self.check_email()
+        self.check_username()
+        self.check__password()
+        self.check_hashing_pass()
+        super().save(*args, **kwargs)
+
 
 
 class Verify(BaseModel):
@@ -70,9 +112,9 @@ class Verify(BaseModel):
     def save(self, *args, **kwargs):
         if not self.pk:
             if self.auth_type == VIA_EMAIL:
-                self.expire_time = timezone.now() + timedelta(minutes=EMAIL_EXPARATION_TIME)
+                self.expire_time = timezone.now() + timedelta(minutes=int(os.getenv("EMAIL_EXPIRATION_TIME")))
             elif self.auth_type == VIA_PHONE:
-                self.expire_time = timezone.now() + timedelta(minutes=PHONE_EXPARATION_TIME)
+                self.expire_time = timezone.now() + timedelta(minutes=int(os.getenv("PHONE_EXPIRATION_TIME")))
         super().save(*args, **kwargs)        
 
 
