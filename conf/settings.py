@@ -30,6 +30,17 @@ DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 
 
+EMAIL_EXPIRATION_TIME = int(
+    os.getenv("EMAIL_EXPIRATION_TIME", 5)
+)
+
+PHONE_EXPIRATION_TIME = int(
+    os.getenv("PHONE_EXPIRATION_TIME", 3)
+)
+
+
+
+
 ALLOWED_HOSTS = []
 
 AUTH_USER_MODEL = 'accounts.CustomUser'
@@ -46,10 +57,8 @@ INSTALLED_APPS = [
 
     'rest_framework',
     'rest_framework_simplejwt',
-    'rest_framework_simplejwt.blacklist',
-
+    'rest_framework_simplejwt.token_blacklist',
     'accounts',
-    'baseapp',
 ]
 
 
@@ -167,8 +176,3 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
 
-MAILERS = {
-    'default': {
-        'BACKEND': 'django.core.mail.backends.console.EmailBackend',
-    },
-}

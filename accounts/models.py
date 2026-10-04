@@ -1,5 +1,4 @@
-import os
-
+import uuid, random
 from django.db import models
 from baseapp.models import BaseModel
 from django.contrib.auth.models import AbstractUser
@@ -9,16 +8,15 @@ from rest_framework.exceptions import ValidationError
 import uuid, random
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from conf import settings
+
 
 NEW, CODE_VERIFY, DONE, PHOTO_DONE = ('new', 'code_verify', 'done', 'photo_done')
 VIA_PHONE, VIA_EMAIL = ('via_phone', 'via_email')
 CUSTOMER, SELLER = ('customer', 'seller')
-AUTH_TYPE = ('via_email', 'via_phone')
 
 
-
-
-class CustomUSer(BaseModel, AbstractUser):
+class CustomUser(BaseModel, AbstractUser):
 
     USER_ROLE = (
         (CUSTOMER, CUSTOMER),
@@ -37,7 +35,7 @@ class CustomUSer(BaseModel, AbstractUser):
         (PHOTO_DONE, PHOTO_DONE)
     )
 
-
+    email = models.EmailField(unique=True, null=True, blank=True)
     user_role = models.CharField(max_length=31, choices=USER_ROLE, default=CUSTOMER)
     auth_status = models.CharField(max_length=31, choices=AUTH_STATUS, default=NEW)
     auth_type = models.CharField(max_length=10, choices=AUTH_TYPE)
@@ -45,8 +43,12 @@ class CustomUSer(BaseModel, AbstractUser):
     photo = models.ImageField(upload_to='accounts/', blank=True, null=True)
 
 
+    def generate_code(self):
+        return str(random.randint(1000, 9999))
+
+    
     def check_email(self):
-        if CustomUSer.objects.filter(username=self.email).exists():
+        if CustomUser.objects.filter(username=self.email).exists():
             raise ValidationError("Bu email band")
         return
 
@@ -55,7 +57,7 @@ class CustomUSer(BaseModel, AbstractUser):
         if not self.username:
             ud = str(uuid.uuid4)
             temp_username = "username" + ud[int(ud.rfind("-")) + 1: ]
-            while CustomUSer.objects.filter(username=temp_username).exists():
+            while CustomUser.objects.filter(username=temp_username).exists():
                 temp_username = temp_username + str(random.randint(0, 10))
             self.username = temp_username
 
@@ -66,8 +68,8 @@ class CustomUSer(BaseModel, AbstractUser):
             self.password = temp_password
 
     def check_hashing_pass(self):
-        self.password = self.set_password(self.password)
-
+        if not self.password.startswith("pbkdf2_sha256$"):
+            self.set_password(self.password)
 
     def check_email_normalize(self):
         if self.email:
@@ -102,7 +104,7 @@ class Verify(BaseModel):
 
     auth_type = models.CharField(max_length=31, choices=VERIFY_TYPE)
     code = models.CharField(max_length=4)
-    user = models.ForeignKey(CustomUSer, on_delete=models.CASCADE, related_name='codes')
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='codes')
     expire_time = models.DateTimeField()
     used = models.BooleanField(default=False)
 
@@ -112,10 +114,18 @@ class Verify(BaseModel):
     def save(self, *args, **kwargs):
         if not self.pk:
             if self.auth_type == VIA_EMAIL:
-                self.expire_time = timezone.now() + timedelta(minutes=int(os.getenv("EMAIL_EXPIRATION_TIME")))
+                self.expire_time = timezone.now() + timedelta(minutes=settings.EMAIL_EXPIRATION_TIME)
             elif self.auth_type == VIA_PHONE:
-                self.expire_time = timezone.now() + timedelta(minutes=int(os.getenv("PHONE_EXPIRATION_TIME")))
+                self.expire_time = timezone.now() + timedelta(minutes=settings.PHONE_EXPIRATION_TIME)
         super().save(*args, **kwargs)        
+
+
+
+
+
+
+
+
 
 
 
