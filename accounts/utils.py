@@ -9,4 +9,4 @@ def check_input_type(value):
         return 'phone'
     if EMAIL_REGEX.fullmatch(value):
         return 'email'
-    return None   # xatoni serializer ko'taradi
+    return None  

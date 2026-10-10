@@ -1,5 +1,5 @@
 from django.shortcuts import render
-from .serializers import SignUpserializer, ChangeInfoSerializer, \
+from .serializers import ProfileUpdateSerializer, SignUpserializer, PasswordChangeSerializer, \
     LoginSerializer, ChangePhotoSerializer
 from rest_framework.response import Response
 from .models import CustomUser, Verify, NEW, CODE_VERIFY, VIA_EMAIL, VIA_PHONE
@@ -57,27 +57,17 @@ class GetNewCodeView(APIView):
                 
             elif user.auth_type == VIA_PHONE:
                 code = user.generate_code(user.auth_type)
-                print(f'CODE PHONE: {code} ===========================')
-                #send_phone(user.phone_number, code)
-        
+                send_verification_code(user.phone_number, code) 
             return Response({
                 "msg": 'Code yuborildi',
                 'auth_type': user.auth_type
             })
             
         return Response({
-                    "msg": 'Siz oldin email yoki telefon raqam kiriting',
-                })
+            "msg": 'Siz oldin email yoki telefon raqam kiriting',
+            'auth_type': user.auth_type
+        })
         
-        
-class ChangeInfoView(UpdateAPIView):
-    permission_classes = [permissions.IsAuthenticated]
-    serializer_class = ChangeInfoSerializer
-    queryset = CustomUser.objects.all()
-    
-    def get_object(self):
-        return self.request.user
-    
     
 class ChangePhotoView(UpdateAPIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -112,19 +102,32 @@ class LoginView(APIView):
         
     
 class ProfileUpdateView():
-    pass
+    def patch(self, request):
+        user = request.user
+        serializer = ProfileUpdateSerializer(user, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
 
 class PasswordChangeView():
-    pass
+    def put(self, request):
+        serializer = PasswordChangeSerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)   
+        serializer.save()
+        return Response({'detail': 'Parol muvaffaqiyatli o\'zgartirildi.'})
+    
 
 class LogoutView():
-    pass
+    def post(self, request):
+        refresh_token = request.data.get('refresh')
+        try:
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+        except Exception as e:
+            raise ValidationError('Token eskirgan yoki xato')
+        
+        return Response({'detail': 'Muvaffaqiyatli chiqildi.'})
 
-class ForgotPasswordView():
-    pass
-
-class ResetPasswordView():
-    pass
 
 
 
